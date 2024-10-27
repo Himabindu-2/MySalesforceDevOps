@@ -4,7 +4,7 @@
     <externalId>false</externalId>
     <label>Student Id</label>
     <length>40</length>
-    <required>true</required>
+    <required>False</required>
     <trackHistory>true</trackHistory>
     <trackTrending>false</trackTrending>
     <type>Text</type>
