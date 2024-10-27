@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<RecordType xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Courses</fullName>
+    <active>true</active>
+    <description>course student taking</description>
+    <label>Courses</label>
+    <picklistValues>
+        <picklist>Branch__c</picklist>
+        <values>
+            <fullName>CSE</fullName>
+            <default>false</default>
+        </values>
+        <values>
+            <fullName>Civil</fullName>
+            <default>false</default>
+        </values>
+        <values>
+            <fullName>ECE</fullName>
+            <default>false</default>
+        </values>
+        <values>
+            <fullName>EEE</fullName>
+            <default>false</default>
+        </values>
+        <values>
+            <fullName>Mech</fullName>
+            <default>false</default>
+        </values>
+    </picklistValues>
+</RecordType>

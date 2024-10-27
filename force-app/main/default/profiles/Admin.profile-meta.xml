@@ -1,10 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Profile xmlns="http://soap.sforce.com/2006/04/metadata">
     <classAccesses>
-        <apexClass>Calculator</apexClass>
-        <enabled>true</enabled>
-    </classAccesses>
-    <classAccesses>
         <apexClass>StudentAccount</apexClass>
         <enabled>true</enabled>
     </classAccesses>
@@ -22,6 +18,18 @@
     <layoutAssignments>
         <layout>Student__c-Student Layout</layout>
     </layoutAssignments>
+    <layoutAssignments>
+        <layout>Student__c-Student Layout</layout>
+        <recordType>Student__c.Course</recordType>
+    </layoutAssignments>
+    <layoutAssignments>
+        <layout>Student__c-Student Layout</layout>
+        <recordType>Student__c.Courses</recordType>
+    </layoutAssignments>
+    <layoutAssignments>
+        <layout>Student__c-Student Layout</layout>
+        <recordType>Student__c.Type</recordType>
+    </layoutAssignments>
     <objectPermissions>
         <allowCreate>true</allowCreate>
         <allowDelete>true</allowDelete>
@@ -31,6 +39,25 @@
         <object>Student__c</object>
         <viewAllRecords>true</viewAllRecords>
     </objectPermissions>
+    <pageAccesses>
+        <apexPage>StudentContact</apexPage>
+        <enabled>true</enabled>
+    </pageAccesses>
+    <recordTypeVisibilities>
+        <default>true</default>
+        <recordType>Student__c.Course</recordType>
+        <visible>true</visible>
+    </recordTypeVisibilities>
+    <recordTypeVisibilities>
+        <default>false</default>
+        <recordType>Student__c.Courses</recordType>
+        <visible>true</visible>
+    </recordTypeVisibilities>
+    <recordTypeVisibilities>
+        <default>false</default>
+        <recordType>Student__c.Type</recordType>
+        <visible>true</visible>
+    </recordTypeVisibilities>
     <userLicense>Salesforce</userLicense>
     <userPermissions>
         <enabled>true</enabled>
