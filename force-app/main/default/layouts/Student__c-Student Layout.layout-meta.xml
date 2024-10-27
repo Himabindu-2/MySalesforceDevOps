@@ -20,10 +20,6 @@
                 <behavior>Edit</behavior>
                 <field>GPA__c</field>
             </layoutItems>
-            <layoutItems>
-                <behavior>Required</behavior>
-                <field>Branch__c</field>
-            </layoutItems>
         </layoutColumns>
         <layoutColumns>
             <layoutItems>
