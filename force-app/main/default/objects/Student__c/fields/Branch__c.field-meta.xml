@@ -3,7 +3,7 @@
     <fullName>Branch__c</fullName>
     <label>Branch</label>
     <required>true</required>
-    <trackHistory>false</trackHistory>
+    <trackHistory>true</trackHistory>
     <trackTrending>false</trackTrending>
     <type>Picklist</type>
     <valueSet>
