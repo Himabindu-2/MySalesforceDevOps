@@ -3,7 +3,7 @@
     <fullName>Student_Id__c</fullName>
     <externalId>false</externalId>
     <label>Student Id</label>
-    <length>40</length>
+    <length>30</length>
     <required>true</required>
     <trackHistory>true</trackHistory>
     <trackTrending>false</trackTrending>
