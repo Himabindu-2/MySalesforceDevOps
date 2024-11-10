@@ -38,11 +38,11 @@ node {
         }
 
         stage('Push To DevHub') { 
-         rc = bat returnStdout path: "${toolbelt}/sf project deploy start --target-org Devhub" 
-          if (rc != 0) {
-        error 'Salesforce push to DevHub org failed.' 
-    }
-}
+               rc = bat returnStatus: true, script: "${toolbelt}/sf project deploy start --target-org Devhub" 
+           if (rc != 0) {
+                error 'Salesforce push to DevHub org failed.' 
+         }
+      }
 
     }
 }
