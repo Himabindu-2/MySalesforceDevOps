@@ -27,7 +27,7 @@ node {
             // Print the JWT key file path for debugging purposes (without exposing sensitive data)
             //echo "JWT Key file path: ${jwt_key_file}"
             // Using Salesforce CLI (sf) command to authenticate using JWT
-            def rc = bat returnStatus: true, script: "${toolbelt}/sf org login jwt --instance-url "${SF_INSTANCE_URL}" --client-id "${SF_CONSUMER_KEY}" --username "${SF_USERNAME}" --jwt-key-file "${server_key_file}" --setalias 'Devhub'"
+            def rc = bat returnStatus: true, script: "${toolbelt}sf org login jwt --instance-url "${SF_INSTANCE_URL}" --client-id "${SF_CONSUMER_KEY}" --username "${SF_USERNAME}" --jwt-key-file "${server_key_file}" --setalias 'Devhub'"
 
             // Check for successful authorization
             if (rc != 0) {
@@ -38,7 +38,7 @@ node {
         }
 
         stage('Push To DevHub') { 
-               rc = bat returnStatus: true, script: "${toolbelt}/sf project deploy start --target-org Devhub" 
+               rc = bat returnStatus: true, script: "${toolbelt}sf project deploy start --target-org Devhub" 
            if (rc != 0) {
                 error 'Salesforce push to DevHub org failed.' 
          }
