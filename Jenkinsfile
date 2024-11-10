@@ -1,43 +1,48 @@
 #!groovy
-import groovy.json.JsonSlurperClassic
-
 node {
     def BUILD_NUMBER = env.BUILD_NUMBER
-    def JWT_KEY_CRED_ID = env.JWT_CRED_ID_DH  // Use the updated credential ID environment variable
-    def SF_INSTANCE_URL = env.SFDC_HOST_DH   // Salesforce instance URL (like https://login.salesforce.com)
-    def SF_CONSUMER_KEY = env.CONNECTED_APP_CONSUMER_KEY_DH   // Salesforce Connected App Consumer Key
-    def SF_USERNAME = env.HUB_ORG_DH  // Salesforce Username for the Hub Org
-    def toolbelt = tool 'toolbelt'  // Toolbelt for Salesforce CLI
+    def RUN_ARTIFACT_DIR="tests/${BUILD_NUMBER}"
+    def SFDC
+    
+    
+    def JWT_KEY_CRED_ID = env.JWT_CRED_ID_DH
+    def HUB_ORG = env.HUB_ORG_DH
+    def SFDC_HOST = env.SFDC_HOST_DH
+    def CONNECTED_APP_CONSUMER_KEY = env.CONNECTED_APP_CONSUMER_KEY_DH
+
+    println 'KEY IS' 
+    println JWT_KEY_CRED_ID
+    println HUB_ORG
+    println SFDC_HOST
+    println CONNECTED_APP_CONSUMER_KEY
+
+    def toolbelt = tool 'toolbelt'
 
     stage('Checkout Source') {
         checkout scm // Checks out the code from the main branch
     }
 
-    // Debugging: Log the credential ID to ensure it's correct
-    echo "Using Credential ID: ${JWT_KEY_CRED_ID}"
+    withCredentials([file(credentialsId: JWT_KEY_CRED_ID, variable: 'jwt_key_file')]) {
+        stage('Authorize Org') {
+            // Print the JWT key file path for debugging purposes (without exposing sensitive data)
+            //echo "JWT Key file path: ${jwt_key_file}"
+            // Using Salesforce CLI (sf) command to authenticate using JWT
+            def rc = bat returnStatus: true, script: "${toolbelt}/sf org login jwt --instance-url "${SF_INSTANCE_URL}" --client-id "${SF_CONSUMER_KEY}" --username "${SF_USERNAME}" --jwt-key-file "${server_key_file}" --setalias 'Devhub'"
 
-    withEnv(["HOME=${env.WORKSPACE}"]) {
-        withCredentials([file(credentialsId: JWT_KEY_CRED_ID, variable: 'server_key_file')]) {
-            
-            // Authorize the Dev Hub org with JWT key and give it an alias.
-            stage('Authorize DevHub') {
-                def rc = bat returnStatus: true, script: """
-                    "${toolbelt}" sf org login jwt --instance-url "${SF_INSTANCE_URL}" --client-id "${SF_CONSUMER_KEY}" --username "${SF_USERNAME}" --jwt-key-file "${server_key_file}" --setalias 'Devhub'
-            
-                if (rc != 0) {
-                    error 'Salesforce dev hub org authorization failed.'
-                } else {
-                    echo 'Salesforce Dev Hub org authorized successfully.'
-                }
-            }
-
-            // Add other stages if necessary, e.g., deploy code, run tests, etc.
-            stage('Deploy Code') {
-                def deployMessage = bat returnStdout: true, script: """
-                    "${toolbelt}" force:source:deploy -x manifest/package.xml -u "${SF_USERNAME}"
-                """
-                echo deployMessage
+            // Check for successful authorization
+            if (rc != 0) {
+                error 'Hub org authorization failed'
+            } else {
+                echo 'Org authorized successfully'
             }
         }
+
+        stage('Push To DevHub') { 
+         rc = bat returnStdout path: "${toolbelt}/sf project deploy start --target-org Devhub" 
+          if (rc != 0) {
+        error 'Salesforce push to DevHub org failed.' 
+    }
+}
+
     }
 }
