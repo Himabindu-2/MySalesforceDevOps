@@ -13,9 +13,12 @@ node {
 
     withCredentials([file(credentialsId: JWT_KEY_CRED_ID, variable: 'jwt_key_file')]) {
         stage('Authorize Org') {
+            // Print the JWT key file path for debugging purposes (without exposing sensitive data)
+            echo "JWT Key file path: ${jwt_key_file}"
+
             // Using Salesforce CLI (sf) command to authenticate using JWT
             def rc = bat returnStatus: true, script: """
-                ${toolbelt} auth:jwt:grant --clientid ${CONNECTED_APP_CONSUMER_KEY} --username ${HUB_ORG} --jwtkeyfile ${jwt_key_file} --setdefaultdevhubusername --instanceurl ${SFDC_HOST}
+                ${toolbelt} auth:jwt:grant --clientid ${CONNECTED_APP_CONSUMER_KEY} --username ${HUB_ORG} --jwtkeyfile "${jwt_key_file}" --setdefaultdevhubusername --instanceurl ${SFDC_HOST}
             """
             
             // Check for successful authorization
