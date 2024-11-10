@@ -13,12 +13,16 @@ node {
 
     withCredentials([file(credentialsId: JWT_KEY_CRED_ID, variable: 'jwt_key_file')]) {
         stage('Authorize Org') {
+            // Using Salesforce CLI (sf) command to authenticate using JWT
             def rc = bat returnStatus: true, script: """
                 ${toolbelt} auth:jwt:grant --clientid ${CONNECTED_APP_CONSUMER_KEY} --username ${HUB_ORG} --jwtkeyfile ${jwt_key_file} --setdefaultdevhubusername --instanceurl ${SFDC_HOST}
             """
-
-            if (rc != 0) { 
+            
+            // Check for successful authorization
+            if (rc != 0) {
                 error 'Hub org authorization failed'
+            } else {
+                echo 'Org authorized successfully'
             }
         }
 
