@@ -22,8 +22,8 @@ node {
             // Authorize the Dev Hub org with JWT key and give it an alias.
             stage('Authorize DevHub') {
                 def rc = bat returnStatus: true, script: """
-                    "${toolbelt}" sf org login jwt --instance-url "${SF_INSTANCE_URL}" --client-id "${SF_CONSUMER_KEY}" --username "${SF_USERNAME}" --jwt-key-file "${server_key_file}" --set-default-dev-hub --alias HubOrg
-                """
+                    "${toolbelt}" sf org login jwt --instance-url "${SF_INSTANCE_URL}" --client-id "${SF_CONSUMER_KEY}" --username "${SF_USERNAME}" --jwt-key-file "${server_key_file}" --setalias 'Devhub'
+            
                 if (rc != 0) {
                     error 'Salesforce dev hub org authorization failed.'
                 } else {
