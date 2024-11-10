@@ -3,7 +3,7 @@ import groovy.json.JsonSlurperClassic
 
 node {
     def BUILD_NUMBER = env.BUILD_NUMBER
-    def SERVER_KEY_CREDENTALS_ID = env.SERVER_KEY_CRED_ID  // Set your credential ID for the server key
+    def JWT_KEY_CRED_ID = env.JWT_CRED_ID_DH  // Use the updated credential ID environment variable
     def SF_INSTANCE_URL = env.SFDC_HOST_DH   // Salesforce instance URL (like https://login.salesforce.com)
     def SF_CONSUMER_KEY = env.CONNECTED_APP_CONSUMER_KEY_DH   // Salesforce Connected App Consumer Key
     def SF_USERNAME = env.HUB_ORG_DH  // Salesforce Username for the Hub Org
@@ -13,8 +13,11 @@ node {
         checkout scm // Checks out the code from the main branch
     }
 
+    // Debugging: Log the credential ID to ensure it's correct
+    echo "Using Credential ID: ${JWT_KEY_CRED_ID}"
+
     withEnv(["HOME=${env.WORKSPACE}"]) {
-        withCredentials([file(credentialsId: SERVER_KEY_CREDENTALS_ID, variable: 'server_key_file')]) {
+        withCredentials([file(credentialsId: JWT_KEY_CRED_ID, variable: 'server_key_file')]) {
             
             // Authorize the Dev Hub org with JWT key and give it an alias.
             stage('Authorize DevHub') {
