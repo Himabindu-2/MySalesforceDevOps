@@ -21,11 +21,7 @@ node {
     stage('Checkout Source') {
         checkout scm // Checks out the code from the main branch
     }
-       stage('Update Salesforce CLI') {
-        // Command to update Salesforce CLI
-        bat 'sf update'
-    }
-     
+           
     withCredentials([file(credentialsId: JWT_KEY_CRED_ID, variable: 'jwt_key_file')]) {
         stage('Authorize Org') {
             // Print the JWT key file path for debugging purposes (without exposing sensitive data)
