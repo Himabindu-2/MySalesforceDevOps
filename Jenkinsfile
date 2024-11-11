@@ -36,7 +36,7 @@ node {
              echo "SFDC Host: ${env.SFDC_HOST_DH}"
              echo "Connected App Consumer Key: ${env.CONNECTED_APP_CONSUMER_KEY_DH}"
 
-            def rc = bat returnStatus: true, script: "${toolbelt}/sf org login jwt --instance-url ${SFDC_HOST} --client-id ${CONNECTED_APP_CONSUMER_KEY} --username ${HUB_ORG} --jwt-key-file ${jwt_key_file} --setalias Devhub"
+            def rc = bat returnStatus: true, script: "${toolbelt}sf org login jwt --instance-url ${SFDC_HOST} --client-id ${CONNECTED_APP_CONSUMER_KEY} --username ${HUB_ORG} --jwt-key-file ${jwt_key_file} --setalias Devhub"
 
   
             echo "SFDC_HOST: ${SFDC_HOST}"
