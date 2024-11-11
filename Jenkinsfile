@@ -31,7 +31,10 @@ node {
             // Print the JWT key file path for debugging purposes (without exposing sensitive data)
             //echo "JWT Key file path: ${jwt_key_file}"
             // Using Salesforce CLI (sf) command to authenticate using JWT
-            echo "SFDC_HOST: ${SFDC_HOST}"
+             echo "JWT Key Credential ID: ${env.JWT_CRED_ID_DH}"
+             echo "Hub Org: ${env.HUB_ORG_DH}"
+             echo "SFDC Host: ${env.SFDC_HOST_DH}"
+             echo "Connected App Consumer Key: ${env.CONNECTED_APP_CONSUMER_KEY_DH}"
 
             def rc = bat returnStatus: true, script: "${toolbelt}sf org login jwt --client-id '${CONNECTED_APP_CONSUMER_KEY}' --username '${HUB_ORG}' --jwt-key-file '${jwt_key_file}' --instance-url '${SFDC_HOST}' --setalias 'Devhub'"
   
