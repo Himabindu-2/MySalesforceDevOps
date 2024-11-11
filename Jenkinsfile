@@ -21,21 +21,11 @@ node {
     stage('Checkout Source') {
         checkout scm // Checks out the code from the main branch
     }
-     stage('Update Salesforce CLI') {
-            steps {
-                script {
-                    // Check the current version of sfdx
-                    bat 'sfdx --version'
-                    
-                    // Update Salesforce CLI to the latest version
-                    bat 'npm install -g sfdx-cli'
-                    
-                    // Verify the new version of sfdx
-                    bat 'sfdx --version'
-                }
-            }
-        
-
+       stage('Update Salesforce CLI') {
+        // Command to update Salesforce CLI
+        sh 'sfdx update'
+    }
+     
     withCredentials([file(credentialsId: JWT_KEY_CRED_ID, variable: 'jwt_key_file')]) {
         stage('Authorize Org') {
             // Print the JWT key file path for debugging purposes (without exposing sensitive data)
@@ -43,7 +33,7 @@ node {
             // Using Salesforce CLI (sf) command to authenticate using JWT
             echo "SFDC_HOST: ${SFDC_HOST}"
 
-            def rc = bat returnStatus: true, script: "${toolbelt}sf org login jwt --instance-url "${SFDC_HOST}" --client-id "${CONNECTED_APP_CONSUMER_KEY}" --username "${HUB_ORG}" --jwt-key-file "${server_key_file}" --setalias 'Devhub'"
+            def rc = bat returnStatus: true, script: "${toolbelt}sf org login jwt --client-id "${CONNECTED_APP_CONSUMER_KEY}" --username "${HUB_ORG}" --jwt-key-file "${server_key_file}" --instance-url "${SFDC_HOST}" --setalias 'Devhub'"
                 echo "SFDC_HOST: ${SFDC_HOST}"
 
             // Check for successful authorization
@@ -62,5 +52,4 @@ node {
       }
 
     }
-}
 }
