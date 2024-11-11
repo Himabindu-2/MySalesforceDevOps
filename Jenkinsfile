@@ -23,7 +23,7 @@ node {
     }
        stage('Update Salesforce CLI') {
         // Command to update Salesforce CLI
-        sh 'sfdx update'
+        bat 'sf update'
     }
      
     withCredentials([file(credentialsId: JWT_KEY_CRED_ID, variable: 'jwt_key_file')]) {
