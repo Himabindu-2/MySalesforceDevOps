@@ -23,21 +23,6 @@
         </values>
     </picklistValues>
     <picklistValues>
-        <picklist>Address_Type__c</picklist>
-        <values>
-            <fullName>Home</fullName>
-            <default>false</default>
-        </values>
-        <values>
-            <fullName>School</fullName>
-            <default>false</default>
-        </values>
-        <values>
-            <fullName>Work</fullName>
-            <default>false</default>
-        </values>
-    </picklistValues>
-    <picklistValues>
         <picklist>LocationType</picklist>
         <values>
             <fullName>Plant</fullName>
