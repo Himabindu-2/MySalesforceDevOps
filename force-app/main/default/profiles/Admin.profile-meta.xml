@@ -26,10 +26,6 @@
     <layoutAssignments>
         <layout>Student__c-Student Layout</layout>
     </layoutAssignments>
-    <layoutAssignments>
-        <layout>Student__c-Student Layout</layout>
-        <recordType>Student__c.Type</recordType>
-    </layoutAssignments>
     <objectPermissions>
         <allowCreate>true</allowCreate>
         <allowDelete>true</allowDelete>
@@ -43,11 +39,6 @@
         <apexPage>StudentContact</apexPage>
         <enabled>true</enabled>
     </pageAccesses>
-    <recordTypeVisibilities>
-        <default>false</default>
-        <recordType>Student__c.Type</recordType>
-        <visible>true</visible>
-    </recordTypeVisibilities>
     <userLicense>Salesforce</userLicense>
     <userPermissions>
         <enabled>true</enabled>
