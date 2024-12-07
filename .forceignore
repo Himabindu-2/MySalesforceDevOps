@@ -2,15 +2,8 @@
 # More information: https://developer.salesforce.com/docs/atlas.en-us.sfdx_dev.meta/sfdx_dev/sfdx_dev_exclude_source.htm
 #
 
-package.xml
-**/Student_Id__c.field-meta.xml
-**/GPA__c.field-meta.xml
-**/classes/Calculator.cls
-**/Calculator.cls-meta.xml
 
-
-
-
+**/package.xml
 # LWC configuration files
 **/jsconfig.json
 **/.eslintrc.json
