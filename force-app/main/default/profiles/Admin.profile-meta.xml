@@ -11,18 +11,6 @@
     <layoutAssignments>
         <layout>Student__c-Student Layout</layout>
     </layoutAssignments>
-    <layoutAssignments>
-        <layout>Student__c-Student Layout</layout>
-        <recordType>Student__c.Course</recordType>
-    </layoutAssignments>
-    <layoutAssignments>
-        <layout>Student__c-Student Layout</layout>
-        <recordType>Student__c.Courses</recordType>
-    </layoutAssignments>
-    <layoutAssignments>
-        <layout>Student__c-Student Layout</layout>
-        <recordType>Student__c.Type</recordType>
-    </layoutAssignments>
     <objectPermissions>
         <allowCreate>true</allowCreate>
         <allowDelete>true</allowDelete>
