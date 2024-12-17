@@ -3,10 +3,7 @@
 #
 
 package.xml
-**/Student_Id__c.field-meta.xml
-**/GPA__c.field-meta.xml
-**/classes/Calculator.cls
-**/Calculator.cls-meta.xml
+
 
 
 
