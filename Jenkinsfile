@@ -30,10 +30,9 @@ node {
     withCredentials([file(credentialsId: JWT_KEY_CRED_ID, variable: 'jwt_key_file')]) {
         stage('Authorize ORG1 Org') {
             echo "JWT Key Credential ID: ${env.JWT_CRED_ID_DH}"
-            echo "Hub Org: ${env.HUB_ORG_DH}"
             echo "Hub Org: ${env.HUB_ORG_DH_1}"
+	    echo "Connected App Consumer Key: ${env.CONNECTED_APP_CONSUMER_KEY_DH1}"
             echo "SFDC Host: ${env.SFDC_HOST_DH}"
-            echo "Connected App Consumer Key: ${env.CONNECTED_APP_CONSUMER_KEY_DH}"
 			 
             def checkrc = bat returnStatus: true, script: "${toolbelt}sf org login jwt --instance-url ${SFDC_HOST} --client-id ${CONNECTED_APP_CONSUMER_KEY1} --username ${HUB_ORG1} --jwt-key-file ${jwt_key_file} --setalias ORG1"
             echo "SFDC_HOST: ${SFDC_HOST}"
@@ -55,6 +54,8 @@ node {
         }
 
         stage('Authorize DevHub Org') {
+         echo "Hub Org: ${env.HUB_ORG_DH}"
+         echo "Connected App Consumer Key: ${env.CONNECTED_APP_CONSUMER_KEY_DH}"	
             def checkrc = bat returnStatus: true, script: "${toolbelt}sf org login jwt --instance-url ${SFDC_HOST} --client-id ${CONNECTED_APP_CONSUMER_KEY} --username ${HUB_ORG} --jwt-key-file ${jwt_key_file} --setalias Devhub"
             
             // Check for successful authorization of Devhub
