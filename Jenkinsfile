@@ -8,6 +8,7 @@ node {
     def HUB_ORG = env.HUB_ORG_DH
     def SFDC_HOST = env.SFDC_HOST_DH
     def CONNECTED_APP_CONSUMER_KEY = env.CONNECTED_APP_CONSUMER_KEY_DH
+    def CONNECTED_APP_CONSUMER_KEY1 = env.CONNECTED_APP_CONSUMER_KEY_DH1
     def HUB_ORG1 = env.HUB_ORG_DH_1
 
     println 'KEY IS' 
@@ -30,7 +31,7 @@ node {
             echo "SFDC Host: ${env.SFDC_HOST_DH}"
             echo "Connected App Consumer Key: ${env.CONNECTED_APP_CONSUMER_KEY_DH}"
 			 
-            def checkrc = bat returnStatus: true, script: "${toolbelt}sf org login jwt --instance-url ${SFDC_HOST} --client-id ${CONNECTED_APP_CONSUMER_KEY} --username ${HUB_ORG1} --jwt-key-file ${jwt_key_file} --setalias ORG1"
+            def checkrc = bat returnStatus: true, script: "${toolbelt}sf org login jwt --instance-url ${SFDC_HOST} --client-id ${CONNECTED_APP_CONSUMER_KEY1} --username ${HUB_ORG1} --jwt-key-file ${jwt_key_file} --setalias ORG1"
             echo "SFDC_HOST: ${SFDC_HOST}"
 
             // Check for successful authorization of ORG1
