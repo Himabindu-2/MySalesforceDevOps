@@ -58,6 +58,7 @@ node {
         stage('Authorize DevHub Org') {
          echo "Hub Org: ${env.HUB_ORG_DH}"
          echo "Connected App Consumer Key: ${env.CONNECTED_APP_CONSUMER_KEY_DH}"	
+		// Deploying code to ORG1
             def checkrc = bat returnStatus: true, script: "${toolbelt}sf org login jwt --instance-url ${SFDC_HOST} --client-id ${CONNECTED_APP_CONSUMER_KEY} --username ${HUB_ORG} --jwt-key-file ${jwt_key_file} --setalias Devhub"
             
             // Check for successful authorization of Devhub
