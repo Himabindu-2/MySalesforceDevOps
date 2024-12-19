@@ -48,9 +48,11 @@ node {
         // Deploying code to ORG1
         stage('Push To ORG1') { 
             def rc = bat returnStatus: true, script: "${toolbelt}sf project deploy start --target-org ORG1" 
-            if (rc != 0) {
+            if (rc = 0) {
                 error 'Salesforce push to ORG1 org failed.' 
-            }
+            }else{
+		  echo 'Salesforce push to ORG1 org successful.'   
+	    }
         }
 
         stage('Authorize DevHub Org') {
