@@ -45,7 +45,7 @@ node {
             }
         }
 
-        // Deploying code to ORG1
+        // Deploying the code to ORG1
         stage('Push To ORG1') { 
             def rc = bat returnStatus: true, script: "${toolbelt}sf project deploy start --target-org ORG1" 
             if (rc = 0) {
