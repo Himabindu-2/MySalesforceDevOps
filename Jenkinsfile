@@ -38,6 +38,7 @@ node {
             echo "SFDC_HOST: ${SFDC_HOST}"
 
             // Check for successful authorization of ORG1
+		
             if (checkrc != 0) {
                 error 'ORG1 org authorization failed'
             } else {
@@ -48,14 +49,14 @@ node {
         // Deploying the code to ORG1
         stage('Push To ORG1') { 
             def rc = bat returnStatus: true, script: "${toolbelt}sf project deploy start --target-org ORG1" 
-            if (rc != 0) {
-                error 'Salesforce push to ORG1 org successful.' 
-            }else{
-		  echo 'Salesforce push to ORG1 org failed.'   
-	    }
-        }
-
-        stage('Authorize DevHub Org') {
+	    if (rc != 0) {
+                error 'Salesforce push to ORG1 org failed.' 
+            } else {
+                echo 'Salesforce push to ORG1 org successful.'   
+            }
+        }	
+            
+	    stage('Authorize DevHub Org') {
          echo "Hub Org: ${env.HUB_ORG_DH}"
          echo "Connected App Consumer Key: ${env.CONNECTED_APP_CONSUMER_KEY_DH}"	
 		// Deploying code to ORG1
