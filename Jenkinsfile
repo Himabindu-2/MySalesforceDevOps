@@ -24,7 +24,7 @@ node {
     def toolbelt = tool 'toolbelt'
 
     stage('Checkout Source') {
-        checkout scm // Checks out the code from the main branch
+        checkout scm // Checks out the code from the main branch for the code changes
     }
            
     withCredentials([file(credentialsId: JWT_KEY_CRED_ID, variable: 'jwt_key_file')]) {
