@@ -8,7 +8,7 @@
         <picklist>Branch__c</picklist>
         <values>
             <fullName>CSE</fullName>
-            <default>false</default>
+            <default>true</default>
         </values>
         <values>
             <fullName>Civil</fullName>
