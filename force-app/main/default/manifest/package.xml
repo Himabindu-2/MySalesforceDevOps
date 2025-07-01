@@ -28,7 +28,6 @@
         <members>*</members>
         <name>LightningComponentBundle</name>
     </types>
-    <types>
         <members>*</members>
         <name>StaticResource</name>
     </types>
