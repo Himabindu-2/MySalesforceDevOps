@@ -13,8 +13,9 @@ node {
     def branch = env.BRANCH_NAME ?: ""
     echo "Detected branch: ${branch}"
 
-    // Only allow release/* and main. Skip otherwise.
-    if (!(branch == 'main' || branch.startsWith('release/'))) {
+    // Case-insensitive allow: main and any release (Release, release, release/...)
+    def b = (branch ?: '').toLowerCase()
+    if (!(b == 'main' || b == 'release' || b.startsWith('release/'))) {
         echo "Branch '${branch}' is excluded from this pipeline (only 'release/*' and 'main' run). Exiting."
         currentBuild.result = 'SUCCESS'
         return
