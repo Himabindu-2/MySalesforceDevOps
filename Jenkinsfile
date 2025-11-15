@@ -2,7 +2,7 @@
 node {
     // --- Configuration: adapt these if your Jenkins env uses different names ---
     def TOOLBELT = tool 'toolbelt'                     // Jenkins Global Tool (path to sf/sfdx)
-    def JWT_KEY_CRED_ID = env.JWT_CRED_ID_DH           // Secret file credential id (server.key)
+    def JWT_KEY_CRED_ID = env.JWT_CRED_ID_DH           // Secret file credential ids (server.key)
     def ORG1_USERNAME = env.HUB_ORG_DH1                // UAT username (ORG1)
     def ORG1_CLIENT_ID = env.CONNECTED_APP_CONSUMER_KEY_DH1
     def ORG2_USERNAME = env.HUB_ORG_DH                 // PROD username (ORG2)
