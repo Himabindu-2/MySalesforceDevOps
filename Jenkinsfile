@@ -23,6 +23,8 @@ node {
         currentBuild.result = "SUCCESS"
         return
     }
+    stage('Update Salesforce CLI') {
+            bat "sf update"
 
     // ---------------- CHECKOUT ----------------
     stage("Checkout") {
@@ -119,7 +121,7 @@ ${TOOLBELT} sf org login jwt --instance-url ${SFDC_HOST} --client-id ${orgClient
                 error "Authentication failed for ${alias}"
 
             def deployCmd = """
-${TOOLBELT} sf project deploy start --metadata-dir ${TMP}\\\\mdapi_output --target-org ${alias} --wait -1
+${TOOLBELT} sf project deploy start --metadata-dir ${TMP}\\\\mdapi_output --target-org ${alias}
 """
             if (bat(returnStatus: true, script: deployCmd) != 0)
                 error "Deployment failed to ${alias}"
