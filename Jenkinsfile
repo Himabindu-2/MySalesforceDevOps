@@ -12,7 +12,9 @@ node {
     def ORG2_USERNAME    = env.HUB_ORG_DH               // PROD
     def ORG2_CLIENT_ID   = env.CONNECTED_APP_CONSUMER_KEY_DH
     def SFDC_HOST        = env.SFDC_HOST_DH ?: "https://login.salesforce.com"
-
+    stage('Update Salesforce CLI') {
+            bat "sf update"
+        }
     // Detect branch
     def branchRaw = env.BRANCH_NAME ?: ""
     def branch = branchRaw.toLowerCase()
