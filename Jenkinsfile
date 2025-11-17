@@ -20,9 +20,13 @@ node {
 
     stage('Checkout') {
         checkout scm
-        // ensure full history so HEAD~1 exists
-        bat 'git fetch --all --prune || echo "fetch failed"'
-        bat 'git fetch --unshallow || echo "not shallow or unshallow failed"'
+
+    // ensure full history so HEAD~1 exists; tolerate failures
+    bat 'git fetch --all --prune || echo "fetch failed or already full"'
+
+    // don't fail build if not shallow
+    def rc = bat(returnStatus: true, script: 'git fetch --unshallow || echo "not shallow or unshallow failed"')
+    echo "git fetch --unshallow rc=${rc}"
     }
 
     stage('Find changed files') {
