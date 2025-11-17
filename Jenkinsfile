@@ -23,10 +23,7 @@ node {
         currentBuild.result = "SUCCESS"
         return
     }
-    stage('Update Salesforce CLI') {
-            bat "sf update"
-
-    // ---------------- CHECKOUT ----------------
+       // ---------------- CHECKOUT ----------------
     stage("Checkout") {
         checkout scm
         bat(returnStatus: true, script: "git fetch --all --prune")
@@ -136,7 +133,7 @@ ${TOOLBELT} sf project deploy start --metadata-dir ${TMP}\\\\mdapi_output --targ
         if (branch == "release") {
             echo "✔ Deployment completed to ${ORG1_USERNAME}"
         } else if (branch == "main") {
-            echo "✔ Deployment completed to: ${ORG2_USERNAME}"
+            echo "✔ Deployment completed to ${ORG2_USERNAME}"
         }
     }
 
