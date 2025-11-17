@@ -3,7 +3,7 @@ node {
     properties([disableConcurrentBuilds()])
 
     // ----- CONFIG - update names if your Jenkins uses different ones -----
-    def TOOLBELT = tool 'toolbelt'                     // Jenkins global tool name for sf/sfdx
+    def TOOLBELT = tool 'toolbelt'                     // Jenkins global tool name for sf
     def JWT_KEY_CRED_ID = env.JWT_CRED_ID_DH           // credential id for server.key
     def ORG1_USERNAME = env.HUB_ORG_DH1                // UAT username
     def ORG1_CLIENT_ID = env.CONNECTED_APP_CONSUMER_KEY_DH1
@@ -26,14 +26,15 @@ node {
         checkout scm
 
         // try to ensure history exists, but don't fail build if unshallow is unnecessary
-        bat 'git fetch --all --prune || echo "fetch failed or already full"'
+        def rcFetchAll = bat(returnStatus: true, script: 'git fetch --all --prune')
+        echo "git fetch --all --prune rc=${rcFetchAll}"
 
         // check if repository is shallow; if so, unshallow (safe)
         def isShallow = bat(returnStdout: true, script: 'git rev-parse --is-shallow-repository 2>nul || echo false').trim()
         echo "is shallow: ${isShallow}"
         if (isShallow == 'true') {
             echo "Repository is shallow -> attempting git fetch --unshallow"
-            def rc = bat(returnStatus: true, script: 'git fetch --unshallow || echo "unshallow failed"')
+            def rc = bat(returnStatus: true, script: 'git fetch --unshallow')
             echo "git fetch --unshallow rc=${rc}"
         } else {
             echo "Repository not shallow - skipping unshallow"
@@ -42,24 +43,28 @@ node {
 
     // Identify changes since last_deployed tag (branch-specific), fallback to commit diff
     stage('Identify Changes') {
-        // fetch tags so tag is visible
-        bat returnStatus: true, script: 'git fetch --tags || echo fetch-tags-failed'
+        // fetch tags so tag is visible (non-fatal)
+        def rcFetchTags = bat(returnStatus: true, script: 'git fetch --tags')
+        echo "git fetch --tags rc=${rcFetchTags}"
 
         def tagName = branch.startsWith('release/') ? 'last_deployed_release' : (branch == 'main' ? 'last_deployed_main' : 'last_deployed')
         echo "Using tag: ${tagName}"
 
-        // check if tag exists
-        def tagExists = bat(returnStdout: true, script: "git rev-parse --verify refs/tags/${tagName} 2>nul || echo notag").trim()
-        echo "tagExists: ${tagExists}"
+        // check if tag exists safely (non-fatal)
+        def rcTagCheck = bat(returnStatus: true, script: "git rev-parse --verify refs/tags/${tagName} >nul 2>nul")
+        def tagExists = (rcTagCheck == 0)
+        echo "tagExists: ${tagExists} (rc=${rcTagCheck})"
 
         def raw = ''
-        if (!tagExists.contains('notag')) {
+        if (tagExists) {
             raw = bat(returnStdout: true, script: "git diff --name-only refs/tags/${tagName}..HEAD || echo ").trim()
             echo "Changed files since tag ${tagName}:\n${raw}"
+        } else {
+            echo "Tag ${tagName} not found - falling back to commit-level diff."
         }
 
         if (!raw?.trim()) {
-            echo "Tag missing or no changes since tag; falling back to commit-level diff"
+            echo "Falling back to commit-level diff (diff-tree)"
             // show commit info for debugging
             def commitInfo = bat(returnStdout: true, script: 'git show --name-only --pretty=format:"%H %an %ad %s" HEAD').trim()
             echo "Commit info & files:\n${commitInfo}"
@@ -114,7 +119,8 @@ foreach ($f in $files) {
         def rcListAfterCopy = bat(returnStatus: true, script: "dir /s ${TMP} || echo no-dir")
         echo "dir after copy rc=${rcListAfterCopy}"
 
-        def convertCmd = """pushd ${TMP} & IF EXIST mdapi_output rmdir /s /q mdapi_output || echo none & ${TOOLBELT} sf project convert source --root-dir . -d mdapi_output & popd"""
+        // convert using sf CLI (latest)
+        def convertCmd = """pushd ${TMP} & IF EXIST mdapi_output rmdir /s /q mdapi_output || echo none & ${TOOLBELT} sf project convert source --root-dir . --output-dir mdapi_output & popd"""
         def rcConvert = bat(returnStatus: true, script: convertCmd)
         echo "source:convert rc=${rcConvert}"
 
@@ -126,13 +132,27 @@ foreach ($f in $files) {
         }
     }
 
+    stage('Save package as artifact') {
+        // create a zip of mdapi_output
+        def zipName = "mdapi_output_${env.BUILD_NUMBER}.zip"
+        def pwdEsc2 = pwd().toString().replaceAll('\\\\','\\\\\\\\')
+        def zipCmd = "powershell -NoProfile -Command \"If (Test-Path '${pwdEsc2}\\\\${TMP}\\\\mdapi_output') { Compress-Archive -Path '${pwdEsc2}\\\\${TMP}\\\\mdapi_output\\\\*' -DestinationPath '${pwdEsc2}\\\\${zipName}' -Force } else { Write-Error 'mdapi_output not found' }\""
+        def rcZip = bat(returnStatus: true, script: zipCmd)
+        echo "zip rc=${rcZip}"
+        if (rcZip != 0) { error "Failed to create zip (rc=${rcZip})" }
+
+        // Archive artifact so it's downloadable from Jenkins build page
+        archiveArtifacts artifacts: "${zipName}", fingerprint: true
+        echo "Archived artifact: ${zipName}"
+    }
+
     // Authenticate and deploy
     def deploySucceeded = false
     withCredentials([file(credentialsId: JWT_KEY_CRED_ID, variable: 'JWT_KEY_FILE')]) {
         if (branch.startsWith('release/')) {
             stage('Deploy to ORG1 (UAT)') {
                 echo "Authenticating to ORG1 (UAT): ${ORG1_USERNAME}"
-                def authCmd = "${TOOLBELT} sf org login jwt --instance-url ${SFDC_HOST} --client-id ${ORG1_CLIENT_ID} --username ${ORG1_USERNAME} --jwt-key-file %JWT_KEY_FILE% --setalias ORG1 || ${TOOLBELT} sfdx auth:jwt:grant --clientid ${ORG1_CLIENT_ID} --jwtkeyfile %JWT_KEY_FILE% --username ${ORG1_USERNAME} --instanceurl ${SFDC_HOST}"
+                def authCmd = "${TOOLBELT} sf org login jwt --instance-url ${SFDC_HOST} --client-id ${ORG1_CLIENT_ID} --username ${ORG1_USERNAME} --jwt-key-file %JWT_KEY_FILE% --setalias ORG1"
                 if (bat(returnStatus: true, script: authCmd) != 0) { error "JWT auth to ORG1 failed" }
                 def mdapiPath = "${TMP}\\\\mdapi_output"
                 def deployCmd = "${TOOLBELT} sf project deploy start --metadata-dir ${mdapiPath} --target-org ORG1 --wait -1"
@@ -142,7 +162,7 @@ foreach ($f in $files) {
         } else if (branch == 'main') {
             stage('Deploy to ORG2 (PROD)') {
                 echo "Authenticating to ORG2 (PROD): ${ORG2_USERNAME}"
-                def authCmd = "${TOOLBELT} sf org login jwt --instance-url ${SFDC_HOST} --client-id ${ORG2_CLIENT_ID} --username ${ORG2_USERNAME} --jwt-key-file %JWT_KEY_FILE% --setalias ORG2 || ${TOOLBELT} sfdx auth:jwt:grant --clientid ${ORG2_CLIENT_ID} --jwtkeyfile %JWT_KEY_FILE% --username ${ORG2_USERNAME} --instanceurl ${SFDC_HOST}"
+                def authCmd = "${TOOLBELT} sf org login jwt --instance-url ${SFDC_HOST} --client-id ${ORG2_CLIENT_ID} --username ${ORG2_USERNAME} --jwt-key-file %JWT_KEY_FILE% --setalias ORG2"
                 if (bat(returnStatus: true, script: authCmd) != 0) { error "JWT auth to ORG2 failed" }
                 def mdapiPath = "${TMP}\\\\mdapi_output"
                 def deployCmd = "${TOOLBELT} sf project deploy start --metadata-dir ${mdapiPath} --target-org ORG2 --wait -1"
