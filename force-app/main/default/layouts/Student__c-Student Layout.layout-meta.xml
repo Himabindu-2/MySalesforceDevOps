@@ -17,7 +17,7 @@
                 <field>Contact__c</field>
             </layoutItems>
             <layoutItems>
-                <behavior>Edit</behavior>
+                <behavior>Required</behavior>
                 <field>GPA__c</field>
             </layoutItems>
         </layoutColumns>
