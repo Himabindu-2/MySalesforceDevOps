@@ -12,9 +12,11 @@ node {
     def ORG2_USERNAME    = env.HUB_ORG_DH               // PROD
     def ORG2_CLIENT_ID   = env.CONNECTED_APP_CONSUMER_KEY_DH
     def SFDC_HOST        = env.SFDC_HOST_DH ?: "https://login.salesforce.com"
+
     stage('Update Salesforce CLI') {
-            bat "sf update"
-        }
+        bat "sf update"
+    }
+
     // Detect branch
     def branchRaw = env.BRANCH_NAME ?: ""
     def branch = branchRaw.toLowerCase()
@@ -25,12 +27,12 @@ node {
         currentBuild.result = "SUCCESS"
         return
     }
-       // ---------------- CHECKOUT ----------------
+
+    // ---------------- CHECKOUT ----------------
     stage("Checkout") {
         checkout scm
         bat(returnStatus: true, script: "git fetch --all --prune")
 
-        // Check if repo is shallow
         def isShallow = bat(returnStdout: true, script: "git rev-parse --is-shallow-repository 2>nul || echo false").trim()
         if (isShallow == "true") {
             bat(returnStatus: true, script: "git fetch --unshallow || echo 'unshallow failed'")
@@ -64,14 +66,12 @@ node {
 
     stage("Prepare Package") {
 
-        // Safe delete (never fails)
         bat(returnStatus: true, script: """
 powershell -NoProfile -Command "Remove-Item -Path '${TMP}' -Recurse -Force -ErrorAction SilentlyContinue"
 """)
 
         bat "mkdir ${TMP}"
 
-        // PowerShell file copier
         def ps = '''
 param([string]$filesString, [string]$tmp)
 $files = $filesString -split ';' | % { $_.Trim() } | ? { $_ -ne '' }
@@ -91,7 +91,6 @@ powershell -NoProfile -ExecutionPolicy Bypass -Command ^
  "& { & '${pwdEsc}\\\\${TMP}\\\\copy.ps1' -filesString '${env.CHANGED_FILES}' -tmp '${pwdEsc}\\\\${TMP}'; }"
 """
 
-        // Convert to MDAPI using latest sf
         def rcConvert = bat(returnStatus: true,
             script: "sf project convert source --root-dir ${TMP} --output-dir ${TMP}\\\\mdapi_output")
         if (rcConvert != 0) error "MDAPI conversion failed"
@@ -124,6 +123,16 @@ ${TOOLBELT} sf project deploy start --metadata-dir ${TMP}\\\\mdapi_output --targ
 """
             if (bat(returnStatus: true, script: deployCmd) != 0)
                 error "Deployment failed to ${alias}"
+
+            // ⭐ Added block: print deployed components
+            def deployedList = bat(
+                returnStdout: true,
+                script: """
+${TOOLBELT} sf project deploy report --target-org ${alias} --json
+"""
+            ).trim()
+            echo "Deployed Components JSON:"
+            echo deployedList
 
             echo "✔ Deployment to ${alias} succeeded."
             deploySucceeded = true
