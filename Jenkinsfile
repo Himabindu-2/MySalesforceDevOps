@@ -1,15 +1,12 @@
 #!groovy
 node {
-
-    // Prevent parallel builds
     properties([disableConcurrentBuilds()])
 
-    // ---------------- CONFIG ----------------
     def TOOLBELT         = tool 'toolbelt'
     def JWT_KEY_CRED_ID  = env.JWT_CRED_ID_DH
-    def ORG1_USERNAME    = env.HUB_ORG_DH1              // UAT
+    def ORG1_USERNAME    = env.HUB_ORG_DH1
     def ORG1_CLIENT_ID   = env.CONNECTED_APP_CONSUMER_KEY_DH1
-    def ORG2_USERNAME    = env.HUB_ORG_DH               // PROD
+    def ORG2_USERNAME    = env.HUB_ORG_DH
     def ORG2_CLIENT_ID   = env.CONNECTED_APP_CONSUMER_KEY_DH
     def SFDC_HOST        = env.SFDC_HOST_DH ?: "https://login.salesforce.com"
 
@@ -17,30 +14,28 @@ node {
         bat "sf update"
     }
 
-    // Detect branch
     def branchRaw = env.BRANCH_NAME ?: ""
     def branch = branchRaw.toLowerCase()
     echo "Branch: ${branchRaw}"
 
     if (!(branch == "main" || branch == "release")) {
-        echo "Skipping: only 'main' and 'release' should run."
+        echo "No deployment for this branch."
         currentBuild.result = "SUCCESS"
         return
     }
 
-    // ---------------- CHECKOUT ----------------
     stage("Checkout") {
         checkout scm
         bat(returnStatus: true, script: "git fetch --all --prune")
 
         def isShallow = bat(returnStdout: true,
             script: "git rev-parse --is-shallow-repository 2>nul || echo false").trim()
+
         if (isShallow == "true") {
             bat(returnStatus: true, script: "git fetch --unshallow || echo 'unshallow failed'")
         }
     }
 
-    // ---------------- FIND CHANGES ----------------
     stage("Find changed files") {
         def raw = bat(returnStdout: true,
             script: "git diff-tree -r --no-commit-id --name-only HEAD || echo").trim()
@@ -48,12 +43,10 @@ node {
         echo "Raw changed files:\n${raw}"
 
         def changed = []
-        if (raw) {
-            changed = raw.readLines().findAll { it.startsWith("force-app/") }
-        }
+        if (raw) changed = raw.readLines().findAll { it.startsWith("force-app/") }
 
-        if (!changed || changed.size() == 0) {
-            echo "✔ No force-app changes detected. Nothing to deploy."
+        if (changed.isEmpty()) {
+            echo "✔ No force-app changes detected."
             currentBuild.result = "SUCCESS"
             return
         }
@@ -62,7 +55,6 @@ node {
         env.CHANGED_FILES = changed.join(";")
     }
 
-    // ---------------- PREPARE PACKAGE ----------------
     def TMP = "ci_tmp_${env.BUILD_NUMBER ?: '0'}"
 
     stage("Prepare Package") {
@@ -73,6 +65,7 @@ powershell -NoProfile -Command "Remove-Item -Path '${TMP}' -Recurse -Force -Erro
 
         bat "mkdir ${TMP}"
 
+        // IMPORTANT FIX — this block MUST stay EXACT
         def ps = '''
 param([string]$filesString, [string]$tmp)
 $files = $filesString -split ';' | % { $_.Trim() } | ? { $_ -ne '' }
@@ -81,4 +74,23 @@ foreach ($f in $files) {
   $dest = Join-Path $tmp $f
   $destDir = Split-Path $dest -Parent
   if (!(Test-Path $destDir)) { New-Item -ItemType Directory -Path $destDir -Force | Out-Null }
-  Co
+  Copy-Item $f $dest -Force
+}
+'''
+        writeFile file: "${TMP}\\copy.ps1", text: ps
+
+        def pwdEsc = pwd().replaceAll("\\\\", "\\\\\\\\")
+        bat """
+powershell -NoProfile -ExecutionPolicy Bypass -Command ^
+ "& { & '${pwdEsc}\\\\${TMP}\\\\copy.ps1' -filesString '${env.CHANGED_FILES}' -tmp '${pwdEsc}\\\\${TMP}'; }"
+"""
+
+        def rcConvert = bat(returnStatus: true,
+            script: "sf project convert source --root-dir ${TMP} --output-dir ${TMP}\\\\mdapi_output")
+
+        if (rcConvert != 0) error "MDAPI conversion failed"
+    }
+
+    def deploySucceeded = false
+
+    withCredentials([file(credentialsId: JWT_KEY_CRED_ID, variable: "J_]()
