@@ -12,5 +12,5 @@ public with sharing class StudentAccount {
     public static Integer div(Integer a, Integer b) {
         return a / b;
     }
-    }    
+    }
 }
