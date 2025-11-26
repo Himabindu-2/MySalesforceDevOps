@@ -7,12 +7,12 @@ node {
     // ---------------- CONFIG ----------------
     def TOOLBELT         = tool 'toolbelt'                       // Jenkins Tool installation name (path to sf)
     def JWT_KEY_CRED_ID  = env.JWT_CRED_ID_DH                    // Jenkins Secret File (server.key)
-    def ORG1_USERNAME    = env.HUB_ORG_DH1                        // UAT (release branch)
+    def ORG1_USERNAME    = env.HUB_ORG_DH1                       // UAT (release branch)
     def ORG1_CLIENT_ID   = env.CONNECTED_APP_CONSUMER_KEY_DH1
-    def ORG2_USERNAME    = env.HUB_ORG_DH                         // PROD (main branch)
+    def ORG2_USERNAME    = env.HUB_ORG_DH                        // PROD (main branch)
     def ORG2_CLIENT_ID   = env.CONNECTED_APP_CONSUMER_KEY_DH
     def SFDC_HOST        = env.SFDC_HOST_DH ?: "https://login.salesforce.com"
-    def API_VERSION      = '59.0'                                 // package.xml API version
+    def API_VERSION      = '59.0'                                // package.xml API version
 
     // ---------------- Helper: create sfupdate wrapper (user requested "sfupdate") ----------------
     stage('Create sfupdate wrapper') {
@@ -63,27 +63,42 @@ sf update install
         bat 'echo PWD=%cd% & dir /b'
     }
 
-    // ---------------- FIND CHANGES ----------------
+    // ---------------- FIND CHANGES (vs last successful commit) ----------------
     stage("Find changed files") {
-        // Use origin/main as a stable baseline. If you prefer origin/${branchRaw}, change the ref below.
-        bat 'git fetch origin +refs/heads/*:refs/remotes/origin/* --prune'
-        def diffCmd = 'git diff --name-only origin/main...HEAD || echo'
+        // Baseline = last successful Git commit from this job, else HEAD~1
+        def baseline = env.GIT_PREVIOUS_SUCCESSFUL_COMMIT
+        if (!baseline?.trim()) {
+            echo "GIT_PREVIOUS_SUCCESSFUL_COMMIT not set, using HEAD~1 as baseline (first run / no prior success)"
+            baseline = "HEAD~1"
+        } else {
+            echo "Using last successful commit as baseline: ${baseline}"
+        }
+
+        // Just for visibility
+        echo "Diff range for delta: ${baseline}..HEAD"
+
+        // Best-effort fetch (not critical for local diff)
+        bat 'git fetch --all --prune || echo "git fetch failed (non-fatal)"'
+
+        def diffCmd = "git diff --name-only ${baseline} HEAD || echo"
         def raw = bat(returnStdout: true, script: diffCmd).trim()
-        echo "Raw changed files vs origin/main:\n${raw}"
+        echo "Raw changed files vs ${baseline}..HEAD:\n${raw}"
 
         def changed = []
         if (raw) {
-            // Accept both common Salesforce source paths
-            changed = raw.readLines().findAll { it.startsWith("force-app/") || it.startsWith("main/default/") || it.startsWith("src/") }
+            // Consider only Salesforce source paths
+            changed = raw.readLines().findAll {
+                it.startsWith("force-app/") || it.startsWith("main/default/") || it.startsWith("src/")
+            }
         }
 
         if (!changed || changed.size() == 0) {
-            echo "✔ No force-app (or src) changes detected. Nothing to deploy."
+            echo "✔ No force-app/main-default/src changes detected since last successful build. Nothing to deploy."
             currentBuild.result = "SUCCESS"
             return
         }
 
-        echo "Files detected by git:\n${changed.join('\n')}"
+        echo "Files detected by git (Salesforce scope only):\n${changed.join('\n')}"
         env.CHANGED_RAW = changed.join(";")
     }
 
@@ -139,7 +154,7 @@ sf update install
             }
         }
 
-        expanded = expanded.unique().findAll { it } // dedupe and clean
+        expanded = expanded.unique().findAll { it }
         echo "Expanded file list:\n${expanded.join('\n')}"
         env.CHANGED_FILES = expanded.join(";")
     }
@@ -250,14 +265,14 @@ powershell -NoProfile -ExecutionPolicy Bypass -Command ^
         }
 
         // build package.xml
-        def xml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\\n<Package xmlns=\\\"http://soap.sforce.com/2006/04/metadata\\\">\\n"
+        def xml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<Package xmlns=\"http://soap.sforce.com/2006/04/metadata\">\n"
         map.each { type, names ->
-            xml += "  <types>\\n"
-            names.each { nm -> xml += "    <members>${nm}</members>\\n" }
-            xml += "    <name>${type}</name>\\n"
-            xml += "  </types>\\n"
+            xml += "  <types>\n"
+            names.each { nm -> xml += "    <members>${nm}</members>\n" }
+            xml += "    <name>${type}</name>\n"
+            xml += "  </types>\n"
         }
-        xml += "  <version>${API_VERSION}</version>\\n</Package>\\n"
+        xml += "  <version>${API_VERSION}</version>\n</Package>\n"
 
         writeFile file: "${TMP}/package.xml", text: xml
         echo "Generated package.xml:\n${xml}"
@@ -306,7 +321,6 @@ powershell -NoProfile -ExecutionPolicy Bypass -Command ^
 
             if (!fileExists("${TMP}\\\\deployReport.json")) {
                 echo "Deploy report not found at ${TMP}\\\\deployReport.json. Dumping raw sf output for debug:"
-                // try to echo last lines of logs (best effort)
                 bat "type ${TMP}\\\\deployReport.json || echo 'no deployReport file present'"
                 error "Deployment report missing; failing build for visibility."
             }
@@ -343,13 +357,11 @@ powershell -NoProfile -ExecutionPolicy Bypass -Command ^
             }
         }
     }
-
-    // ---------------- FINAL MESSAGE ----------------
     if (deploySucceeded) {
         if (branch == "release") {
-            echo "✔ Deployment completed to ${ORG1_USERNAME}"
+            echo "Deployment completed to ${ORG1_USERNAME}"
         } else if (branch == "main") {
-            echo "✔ Deployment completed to ${ORG2_USERNAME}"
+            echo "Deployment completed to ${ORG2_USERNAME}"
         }
 
         // Print deployed components summary and set build description
@@ -362,13 +374,5 @@ powershell -NoProfile -ExecutionPolicy Bypass -Command ^
         } else {
             echo "No deployed components were recorded in the report."
         }
-    }
-
-    // ---------------- CLEANUP ----------------
-    stage("Cleanup") {
-        bat(returnStatus: true, script: """
-powershell -NoProfile -Command "Remove-Item -Path '${TMP}' -Recurse -Force -ErrorAction SilentlyContinue"
-""")
-        echo "Workspace cleaned."
     }
 }
