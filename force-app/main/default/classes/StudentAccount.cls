@@ -11,6 +11,10 @@ public with sharing class StudentAccount {
     }
     public static Integer div(Integer a, Integer b) {
         return a / b;
+    
     }
+    public Integer add(Integer a, Integer b){
+        return a+b;
     }
+
 }
