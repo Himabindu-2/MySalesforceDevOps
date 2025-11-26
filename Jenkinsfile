@@ -22,13 +22,6 @@ node {
         // show version (helpful debug)
         bat 'sf --version || echo "sf --version failed"'
     }
-
-    // ---------------- CLI UPDATE ----------------
-    stage('Update Salesforce CLI') {
-        // run the sfupdate wrapper (so we keep your requested alias)
-        bat 'sfupdate.bat'
-    }
-
     // ---------------- BRANCH CHECK ----------------
     def branchRaw = env.BRANCH_NAME ?: ""
     def branch = branchRaw.toLowerCase()
