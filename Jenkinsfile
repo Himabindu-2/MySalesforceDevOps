@@ -13,17 +13,7 @@ node {
     def ORG2_CLIENT_ID   = env.CONNECTED_APP_CONSUMER_KEY_DH
     def SFDC_HOST        = env.SFDC_HOST_DH ?: "https://login.salesforce.com"
     def API_VERSION      = '59.0'                                // package.xml API version
-
-    // ---------------- Helper: create sfupdate wrapper (user requested "sfupdate") ----------------
-    stage('Create sfupdate wrapper') {
-        // create a small batch script in workspace that invokes the real CLI update
-        writeFile file: 'sfupdate.bat', text: '''@echo off
-REM wrapper to run sf update (keeps user-requested sfupdate command)
-sf update install
-'''
-        bat 'type sfupdate.bat'
-    }
-
+     
     // ---------------- PREP PATH ----------------
     stage('Set PATH for sf') {
         // tool(...) returns the folder path to the tool installation. Prepend to PATH so "sf" is available.
