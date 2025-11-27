@@ -13,15 +13,17 @@ node {
     def ORG2_CLIENT_ID   = env.CONNECTED_APP_CONSUMER_KEY_DH
     def SFDC_HOST        = env.SFDC_HOST_DH ?: "https://login.salesforce.com"
     def API_VERSION      = '59.0'                                // package.xml API version
+
+    // flag to control whether we continue past diff
+    boolean hasChanges = false
      
     // ---------------- PREP PATH ----------------
     stage('Set PATH for sf') {
-        // tool(...) returns the folder path to the tool installation. Prepend to PATH so "sf" is available.
         env.PATH = "${TOOLBELT};${env.PATH}"
         bat 'where sf || echo "sf not found in PATH"'
-        // show version (helpful debug)
         bat 'sf --version || echo "sf --version failed"'
     }
+
     // ---------------- BRANCH CHECK ----------------
     def branchRaw = env.BRANCH_NAME ?: ""
     def branch = branchRaw.toLowerCase()
@@ -42,13 +44,11 @@ node {
         if (isShallow == "true") {
             bat(returnStatus: true, script: "git fetch --unshallow || echo 'unshallow failed'")
         }
-        // Print workspace for debugging
         bat 'echo PWD=%cd% & dir /b'
     }
 
     // ---------------- FIND CHANGES (vs last successful commit) ----------------
     stage("Find changed files") {
-        // Baseline = last successful Git commit from this job, else HEAD~1
         def baseline = env.GIT_PREVIOUS_SUCCESSFUL_COMMIT
         if (!baseline?.trim()) {
             echo "GIT_PREVIOUS_SUCCESSFUL_COMMIT not set, using HEAD~1 as baseline (first run / no prior success)"
@@ -57,10 +57,10 @@ node {
             echo "Using last successful commit as baseline: ${baseline}"
         }
 
-        // Just for visibility
+        // For you: this is the last success commit number
+        echo "Last successful commit used for diff: ${baseline}"
         echo "Diff range for delta: ${baseline}..HEAD"
 
-        // Best-effort fetch (not critical for local diff)
         bat 'git fetch --all --prune || echo "git fetch failed (non-fatal)"'
 
         def diffCmd = "git diff --name-only ${baseline} HEAD || echo"
@@ -69,7 +69,6 @@ node {
 
         def changed = []
         if (raw) {
-            // Consider only Salesforce source paths
             changed = raw.readLines().findAll {
                 it.startsWith("force-app/") || it.startsWith("main/default/") || it.startsWith("src/")
             }
@@ -77,12 +76,19 @@ node {
 
         if (!changed || changed.size() == 0) {
             echo "✔ No force-app/main-default/src changes detected since last successful build. Nothing to deploy."
-            currentBuild.result = "SUCCESS"
-            return
+            hasChanges = false
+        } else {
+            hasChanges = true
+            echo "Files detected by git (Salesforce scope only):\n${changed.join('\n')}"
+            env.CHANGED_RAW = changed.join(";")
         }
+    }
 
-        echo "Files detected by git (Salesforce scope only):\n${changed.join('\n')}"
-        env.CHANGED_RAW = changed.join(";")
+    // ⛔ TOP-LEVEL EXIT: if no changes, stop the whole pipeline here
+    if (!hasChanges) {
+        echo "Exiting pipeline early because no deployable changes were found."
+        currentBuild.result = "SUCCESS"
+        return
     }
 
     // ---------------- EXPAND CHANGED FILES (bundles, meta.xml, objects) ----------------
@@ -145,13 +151,11 @@ node {
     // ---------------- PREPARE DELTA FOLDER ----------------
     def TMP = "ci_tmp_${env.BUILD_NUMBER ?: '0'}"
     stage("Prepare Delta Package") {
-        // cleanup
         bat(returnStatus: true, script: """
 powershell -NoProfile -Command "Remove-Item -Path '${TMP}' -Recurse -Force -ErrorAction SilentlyContinue"
 """)
         bat "mkdir ${TMP}"
 
-        // write copy script (PowerShell)
         def ps = '''
 param([string]$filesString, [string]$tmp)
 $files = $filesString -split ';' | % { $_.Trim() } | ? { $_ -ne '' }
@@ -165,13 +169,11 @@ foreach ($f in $files) {
 '''
         writeFile file: "${TMP}\\copy.ps1", text: ps
 
-        // copy expanded changed files into TMP
         def filesString = env.CHANGED_FILES ?: ""
         bat """
 powershell -NoProfile -ExecutionPolicy Bypass -Command ^
  "& { & '${pwd().toString().replaceAll('\\\\','\\\\\\\\')}\\\\${TMP}\\\\copy.ps1' -filesString '${filesString}' -tmp '${pwd().toString().replaceAll('\\\\','\\\\\\\\')}\\\\${TMP}'; }"
 """
-        // list TMP contents for debugging
         bat "dir ${TMP} /s"
     }
 
@@ -182,14 +184,13 @@ powershell -NoProfile -ExecutionPolicy Bypass -Command ^
 
         files.each { f ->
             if (!f) return
-            // build path to file inside TMP
             def safeF = f.replaceAll('\\\\','/')
             def filePath = "${pwd().toString()}\\\\${TMP}\\\\${safeF.replaceAll('/','\\\\\\\\')}"
             def tmpOutName = safeF.replaceAll(/[\\\\\\/:*?"<>| ]/,'_') + ".json"
             def tmpOut = "${TMP}\\\\${tmpOutName}"
 
-            // Run sf metadata type once and capture output to tmpOut
-            def cmd = "${TOOLBELT}\\\\sf metadata type --file \"${filePath}\" --json > \"${tmpOut}\" 2>&1 & echo %ERRORLEVEL%"
+            // use plain sf (from PATH)
+            def cmd = "sf metadata type --file \"${filePath}\" --json > \"${tmpOut}\" 2>&1 & echo %ERRORLEVEL%"
             def rcLine = bat(returnStdout: true, script: cmd).trim()
             def rc = 1
             try {
@@ -215,7 +216,6 @@ powershell -NoProfile -ExecutionPolicy Bypass -Command ^
                 // ignore parse error -> fallback heuristics
             }
 
-            // Fallback heuristics if sf couldn't determine type/fullName
             if (!t || !n) {
                 if (f.contains("/classes/") && f.endsWith(".cls")) {
                     t = "ApexClass"; n = (new File(f)).getName().replaceAll(/\.cls$/,'')
@@ -233,7 +233,6 @@ powershell -NoProfile -ExecutionPolicy Bypass -Command ^
                     if (idx >= 0 && parts.length > idx+1) n = parts[idx+1]
                 } else {
                     def fname = (new File(f)).getName().replaceAll(/-meta\.xml$/,'').replaceAll(/\..*$/,'')
-                    // choose a reasonable default type for unknown items (will be included as members)
                     t = "CustomMetadata"
                     n = fname
                 }
@@ -247,7 +246,6 @@ powershell -NoProfile -ExecutionPolicy Bypass -Command ^
             }
         }
 
-        // build package.xml
         def xml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<Package xmlns=\"http://soap.sforce.com/2006/04/metadata\">\n"
         map.each { type, names ->
             xml += "  <types>\n"
@@ -263,7 +261,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -Command ^
 
     // ---------------- CONVERT TO MDAPI ----------------
     stage("Convert to MDAPI") {
-        def rc = bat(returnStatus: true, script: "${TOOLBELT}\\\\sf project convert source --root-dir ${TMP} --output-dir ${TMP}\\\\mdapi_output")
+        def rc = bat(returnStatus: true, script: "sf project convert source --root-dir ${TMP} --output-dir ${TMP}\\\\mdapi_output")
         if (rc != 0) error "MDAPI conversion failed"
         echo "MDAPI output ready at ${TMP}\\\\mdapi_output"
     }
@@ -274,7 +272,6 @@ powershell -NoProfile -ExecutionPolicy Bypass -Command ^
         archiveArtifacts artifacts: "${TMP}\\\\delta.zip", fingerprint: true
         echo "Delta zip archived: ${TMP}\\\\delta.zip"
 
-        // list zip contents for debugging
         bat "powershell -NoProfile -Command \"Add-Type -AssemblyName System.IO.Compression.FileSystem; [System.IO.Compression.ZipFile]::OpenRead('${TMP}\\\\delta.zip').Entries | ForEach-Object { Write-Host $_.FullName }\""
     }
 
@@ -293,14 +290,13 @@ powershell -NoProfile -ExecutionPolicy Bypass -Command ^
 
             echo "Authenticating to ${alias} as ${orgUser}"
 
-            def authCmd = """${TOOLBELT}\\\\sf org login jwt --instance-url ${SFDC_HOST} --client-id ${orgClient} --username ${orgUser} --jwt-key-file %JWT_KEY_FILE% --setalias ${alias}"""
+            def authCmd = """sf org login jwt --instance-url ${SFDC_HOST} --client-id ${orgClient} --username ${orgUser} --jwt-key-file %JWT_KEY_FILE% --setalias ${alias}"""
             if (bat(returnStatus: true, script: authCmd) != 0) {
                 error "Authentication failed for ${alias}"
             }
 
-            // Start deployment and capture JSON report to file (use --wait so report is produced)
-            def deployCmd = "${TOOLBELT}\\\\sf project deploy start --zip-file ${TMP}\\\\delta.zip --target-org ${alias} --wait 60 --json > ${TMP}\\\\deployReport.json 2>&1"
-            bat returnStatus: true, script: deployCmd // do not immediately fail here so we can read report
+            def deployCmd = "sf project deploy start --zip-file ${TMP}\\\\delta.zip --target-org ${alias} --wait 60 --json > ${TMP}\\\\deployReport.json 2>&1"
+            bat returnStatus: true, script: deployCmd
 
             if (!fileExists("${TMP}\\\\deployReport.json")) {
                 echo "Deploy report not found at ${TMP}\\\\deployReport.json. Dumping raw sf output for debug:"
@@ -340,6 +336,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -Command ^
             }
         }
     }
+
     if (deploySucceeded) {
         if (branch == "release") {
             echo "Deployment completed to ${ORG1_USERNAME}"
@@ -347,7 +344,6 @@ powershell -NoProfile -ExecutionPolicy Bypass -Command ^
             echo "Deployment completed to ${ORG2_USERNAME}"
         }
 
-        // Print deployed components summary and set build description
         if (deployedComponents.size() > 0) {
             echo "=== SUMMARY: Deployed Components ==="
             deployedComponents.each { echo it }
