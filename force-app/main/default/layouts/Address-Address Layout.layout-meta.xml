@@ -29,7 +29,7 @@
         </layoutColumns>
         <layoutColumns>
             <layoutItems>
-                <behavior>Required</behavior>
+                <behavior>Edit</behavior>
                 <field>LocationType</field>
             </layoutItems>
             <layoutItems>
